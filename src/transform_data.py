@@ -6,7 +6,7 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 path_name = Path(__file__).parent.parent / 'data' / 'weather_data.json'
-columns_names_to_drop = ['weather', 'weather_icon', 'sys.type']
+columns_names_to_drop = ['weather', 'weather_icon']
 columns_names_to_rename = {
         "base": "base",
         "visibility": "visibility",
@@ -68,7 +68,7 @@ def normalize_weather_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 def drop_columns(df: pd.DataFrame, columns_names:list[str]) -> pd.DataFrame:
     logging.info(f"\n→ Removendo colunas: {columns_names}")
-    df = df.drop(columns=columns_names)
+    df = df.drop(columns=columns_names, errors='ignore')
     logging.info(f"✓ Colunas removidas - {len(df.columns)} colunas restantes")
     return df 
 

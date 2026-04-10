@@ -15,7 +15,7 @@ env_path = Path(__file__).resolve().parent.parent / 'config' / '.env'
 load_dotenv(env_path)
 
 API_KEY = os.getenv('API_KEY')
-url = f'https://api.openweathermap.org/data/2.5/weather?q=Cascavel,BR&units=metric&appid={API_KEY}'
+url = f'https://api.openweathermap.org/data/2.5/weather?q=Cascavel,BR&units=metric&lang=pt_br&appid={API_KEY}'
 
 @dag(
     dag_id='first_weather_pipeline',

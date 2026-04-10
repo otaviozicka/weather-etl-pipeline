@@ -67,3 +67,4 @@ data/*.xlsx
 docker-compose.override.yml
 .dockerignore
 postgres-db-volume/
+git/
