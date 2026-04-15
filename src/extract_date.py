@@ -20,7 +20,7 @@ def extract_weather_data(url: str) -> list:
         logging.warning("Nenhum dado retornado")
         return []
 
-    output_path = 'data/weather_data.json'
+    output_path = '/opt/airflow/data/weather_data.json'
     output_dir = Path(output_path).parent
     output_dir.mkdir(parents=True, exist_ok=True)
 
