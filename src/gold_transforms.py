@@ -233,21 +233,40 @@ def upsert_gold_sensacao_termica(engine):
                 data, diff_media, diff_max,
                 hora_maior_divergencia, condicao_maior_divergencia
             )
+            WITH base AS (
+                SELECT
+                    DATE(coletado_em)                        AS data,
+                    coletado_em,
+                    ABS(temperatura - feels_like)            AS diff,
+                    EXTRACT(HOUR FROM coletado_em)::INTEGER  AS hora,
+                    weather_description
+                FROM cascacity_weather
+                WHERE DATE(coletado_em) = CURRENT_DATE
+            ),
+            stats AS (
+                SELECT
+                    data,
+                    ROUND(AVG(diff)::numeric, 2) AS diff_media,
+                    ROUND(MAX(diff)::numeric, 2) AS diff_max
+                FROM base
+                GROUP BY data
+            ),
+            hora_max AS (
+                SELECT DISTINCT ON (data)
+                    data,
+                    hora        AS hora_maior_divergencia,
+                    weather_description AS condicao_maior_divergencia
+                FROM base
+                ORDER BY data, diff DESC
+            )
             SELECT
-                DATE(coletado_em) AS data,
-                ROUND(AVG(ABS(temperatura - feels_like))::numeric, 2) AS diff_media,
-                ROUND(MAX(ABS(temperatura - feels_like))::numeric, 2) AS diff_max,
-                EXTRACT(HOUR FROM MAX(coletado_em) FILTER (
-                    WHERE ABS(temperatura - feels_like) = MAX(ABS(temperatura - feels_like))
-                    OVER (PARTITION BY DATE(coletado_em))
-                ))::INTEGER AS hora_maior_divergencia,
-                MAX(weather_description) FILTER (
-                    WHERE ABS(temperatura - feels_like) = MAX(ABS(temperatura - feels_like))
-                    OVER (PARTITION BY DATE(coletado_em))
-                ) AS condicao_maior_divergencia
-            FROM cascacity_weather
-            WHERE DATE(coletado_em) = CURRENT_DATE
-            GROUP BY DATE(coletado_em)
+                s.data,
+                s.diff_media,
+                s.diff_max,
+                h.hora_maior_divergencia,
+                h.condicao_maior_divergencia
+            FROM stats s
+            JOIN hora_max h ON s.data = h.data
             ON CONFLICT (data) DO UPDATE SET
                 diff_media                 = EXCLUDED.diff_media,
                 diff_max                   = EXCLUDED.diff_max,
@@ -256,7 +275,6 @@ def upsert_gold_sensacao_termica(engine):
         """))
         conn.commit()
     logging.info("✓ gold_sensacao_termica atualizada")
-
 
 def run_gold_pipeline(engine):
     logging.info("\n=== INICIANDO PIPELINE GOLD ===")
