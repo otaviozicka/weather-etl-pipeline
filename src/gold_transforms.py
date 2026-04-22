@@ -179,19 +179,43 @@ def upsert_gold_padrao_climatico(engine):
             INSERT INTO gold_padrao_climatico (
                 hora, weather_main, weather_description, ocorrencias, percentual
             )
+            WITH base AS (
+                SELECT
+                    EXTRACT(HOUR FROM coletado_em)::INTEGER AS hora,
+                    weather_main,
+                    weather_description,
+                    COUNT(*) AS ocorrencias
+                FROM cascacity_weather
+                GROUP BY
+                    EXTRACT(HOUR FROM coletado_em),
+                    weather_main,
+                    weather_description
+            ),
+            top_desc AS (
+                SELECT DISTINCT ON (hora, weather_main)
+                    hora,
+                    weather_main,
+                    weather_description
+                FROM base
+                ORDER BY hora, weather_main, ocorrencias DESC
+            ),
+            totais AS (
+                SELECT
+                    hora,
+                    weather_main,
+                    SUM(ocorrencias) AS ocorrencias,
+                    SUM(SUM(ocorrencias)) OVER (PARTITION BY hora) AS total_hora
+                FROM base
+                GROUP BY hora, weather_main
+            )
             SELECT
-                EXTRACT(HOUR FROM coletado_em)::INTEGER AS hora,
-                weather_main,
-                weather_description,
-                COUNT(*) AS ocorrencias,
-                ROUND((COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (
-                    PARTITION BY EXTRACT(HOUR FROM coletado_em)
-                ))::numeric, 2) AS percentual
-            FROM cascacity_weather
-            GROUP BY
-                EXTRACT(HOUR FROM coletado_em),
-                weather_main,
-                weather_description
+                t.hora,
+                t.weather_main,
+                d.weather_description,
+                t.ocorrencias,
+                ROUND((t.ocorrencias * 100.0 / t.total_hora)::numeric, 2) AS percentual
+            FROM totais t
+            JOIN top_desc d ON t.hora = d.hora AND t.weather_main = d.weather_main
             ON CONFLICT (hora, weather_main) DO UPDATE SET
                 weather_description = EXCLUDED.weather_description,
                 ocorrencias         = EXCLUDED.ocorrencias,
