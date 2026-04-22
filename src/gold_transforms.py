@@ -98,24 +98,42 @@ def upsert_gold_amplitude_termica(engine):
                 data, amplitude, hora_mais_quente, temp_mais_quente,
                 hora_mais_fria, temp_mais_fria
             )
+            WITH stats AS (
+                SELECT
+                    DATE(coletado_em) AS data,
+                    MAX(temperatura) - MIN(temperatura) AS amplitude,
+                    MAX(temperatura) AS temp_mais_quente,
+                    MIN(temperatura) AS temp_mais_fria
+                FROM cascacity_weather
+                WHERE DATE(coletado_em) = CURRENT_DATE
+                GROUP BY DATE(coletado_em)
+            ),
+            hora_quente AS (
+                SELECT DISTINCT ON (DATE(coletado_em))
+                    DATE(coletado_em) AS data,
+                    EXTRACT(HOUR FROM coletado_em)::INTEGER AS hora
+                FROM cascacity_weather
+                WHERE DATE(coletado_em) = CURRENT_DATE
+                ORDER BY DATE(coletado_em), temperatura DESC
+            ),
+            hora_fria AS (
+                SELECT DISTINCT ON (DATE(coletado_em))
+                    DATE(coletado_em) AS data,
+                    EXTRACT(HOUR FROM coletado_em)::INTEGER AS hora
+                FROM cascacity_weather
+                WHERE DATE(coletado_em) = CURRENT_DATE
+                ORDER BY DATE(coletado_em), temperatura ASC
+            )
             SELECT
-                DATE(coletado_em) AS data,
-                MAX(temperatura) - MIN(temperatura) AS amplitude,
-                EXTRACT(HOUR FROM MAX(coletado_em) FILTER (
-                    WHERE temperatura = MAX(temperatura) OVER (
-                        PARTITION BY DATE(coletado_em)
-                    )
-                ))::INTEGER AS hora_mais_quente,
-                MAX(temperatura) AS temp_mais_quente,
-                EXTRACT(HOUR FROM MAX(coletado_em) FILTER (
-                    WHERE temperatura = MIN(temperatura) OVER (
-                        PARTITION BY DATE(coletado_em)
-                    )
-                ))::INTEGER AS hora_mais_fria,
-                MIN(temperatura) AS temp_mais_fria
-            FROM cascacity_weather
-            WHERE DATE(coletado_em) = CURRENT_DATE
-            GROUP BY DATE(coletado_em)
+                s.data,
+                s.amplitude,
+                hq.hora AS hora_mais_quente,
+                s.temp_mais_quente,
+                hf.hora AS hora_mais_fria,
+                s.temp_mais_fria
+            FROM stats s
+            JOIN hora_quente hq ON s.data = hq.data
+            JOIN hora_fria   hf ON s.data = hf.data
             ON CONFLICT (data) DO UPDATE SET
                 amplitude        = EXCLUDED.amplitude,
                 hora_mais_quente = EXCLUDED.hora_mais_quente,
