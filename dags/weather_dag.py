@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from airflow.decorators import dag, task
+from airflow.sdk import dag, task
 from pathlib import Path
 import sys
 import os
@@ -10,6 +10,7 @@ from extract_date import extract_weather_data
 from load_data import load_weather_data
 from transform_data import data_transformations
 from dotenv import load_dotenv
+from gold_transforms import run_gold_pipeline
 
 env_path = Path(__file__).resolve().parent.parent / 'config' / '.env'
 load_dotenv(env_path)
@@ -50,6 +51,12 @@ def weather_pipeline():
         df = pd.read_parquet('/opt/airflow/data/temp_data.parquet')
         load_weather_data('cascacity_weather', df)
         
-    extract() >> transform() >> load()
+    @task
+    def gold():
+        from load_data import get_engine
+        engine = get_engine()
+        run_gold_pipeline(engine)
+
+    extract() >> transform() >> load() >> gold()    
 
 weather_pipeline()
