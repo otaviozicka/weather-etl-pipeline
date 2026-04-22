@@ -79,7 +79,6 @@ def upsert_gold_temperatura_diaria(engine):
                 MAX(temperatura)                      AS temp_max,
                 MIN(temperatura)                      AS temp_min
             FROM cascacity_weather
-            WHERE DATE(coletado_em) = CURRENT_DATE
             GROUP BY DATE(coletado_em)
             ON CONFLICT (data) DO UPDATE SET
                 temp_media = EXCLUDED.temp_media,
@@ -105,7 +104,6 @@ def upsert_gold_amplitude_termica(engine):
                     MAX(temperatura) AS temp_mais_quente,
                     MIN(temperatura) AS temp_mais_fria
                 FROM cascacity_weather
-                WHERE DATE(coletado_em) = CURRENT_DATE
                 GROUP BY DATE(coletado_em)
             ),
             hora_quente AS (
@@ -113,7 +111,6 @@ def upsert_gold_amplitude_termica(engine):
                     DATE(coletado_em) AS data,
                     EXTRACT(HOUR FROM coletado_em)::INTEGER AS hora
                 FROM cascacity_weather
-                WHERE DATE(coletado_em) = CURRENT_DATE
                 ORDER BY DATE(coletado_em), temperatura DESC
             ),
             hora_fria AS (
@@ -121,7 +118,6 @@ def upsert_gold_amplitude_termica(engine):
                     DATE(coletado_em) AS data,
                     EXTRACT(HOUR FROM coletado_em)::INTEGER AS hora
                 FROM cascacity_weather
-                WHERE DATE(coletado_em) = CURRENT_DATE
                 ORDER BY DATE(coletado_em), temperatura ASC
             )
             SELECT
@@ -165,7 +161,6 @@ def append_gold_pressao_tendencia(engine):
                 END AS tendencia,
                 weather_description
             FROM cascacity_weather
-            WHERE coletado_em = (SELECT MAX(coletado_em) FROM cascacity_weather)
             ON CONFLICT (coletado_em) DO NOTHING
         """))
         conn.commit()
@@ -241,7 +236,6 @@ def upsert_gold_sensacao_termica(engine):
                     EXTRACT(HOUR FROM coletado_em)::INTEGER  AS hora,
                     weather_description
                 FROM cascacity_weather
-                WHERE DATE(coletado_em) = CURRENT_DATE
             ),
             stats AS (
                 SELECT
