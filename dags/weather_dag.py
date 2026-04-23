@@ -19,7 +19,7 @@ api_key = os.getenv('api_key')
 url = f'https://api.openweathermap.org/data/2.5/weather?q=Cascavel,BR&units=metric&lang=pt_br&appid={api_key}'
 
 @dag(
-    dag_id='first_weather_pipeline',
+    dag_id='weather_etl_pipeline',
     default_args={
         'owner': 'airflow',
         'depends_on_past': False,
